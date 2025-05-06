@@ -1,3 +1,8 @@
+/*
+* Copyright (c) 2025 Advanced Micro Devices, Inc. All Rights Reserved.
+* SPDX-License-Identifier: MIT
+*/
+
 function onPageLoad() {
 	document.getElementById("upld_prgrs").style.visibility = "hidden";
 	document.getElementById("upld_status").style.visibility = "hidden";
