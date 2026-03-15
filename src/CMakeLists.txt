@@ -10,6 +10,7 @@ include_directories(${CMAKE_BINARY_DIR}/include)
 include(${CMAKE_CURRENT_SOURCE_DIR}/UserConfig.cmake)
 
 find_package(common)
+find_package(commonmeta)
 enable_language(C ASM)
 
 collect(PROJECT_LIB_DEPS xilstandalone)
@@ -56,7 +57,8 @@ collect (PROJECT_LIB_SOURCES xbir_ws.c)
 collector_list (_sources PROJECT_LIB_SOURCES)
 collector_list (_headers PROJECT_LIB_HEADERS)
 
-if(CMAKE_EXPORT_COMPILE_COMMANDS)
+if (CMAKE_EXPORT_COMPILE_COMMANDS AND
+    (NOT ${YOCTO}))
   set(CMAKE_CXX_STANDARD_INCLUDE_DIRECTORIES ${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES})
   set(CMAKE_C_STANDARD_INCLUDE_DIRECTORIES ${CMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES})
 endif()
@@ -69,11 +71,6 @@ add_executable(${APP_NAME}.elf ${S_SOURCES} ${_sources})
 target_link_libraries(${APP_NAME}.elf -Wl,-Map=${APP_NAME}.map -Wl,--build-id=none -Wl,--gc-sections -T\"${CMAKE_CURRENT_SOURCE_DIR}/lscript.ld\" -L\"${CMAKE_LIBRARY_PATH}/\" -L\"${USER_LINK_DIRECTORIES}/\" -Wl,--start-group ${_deps} -Wl,--end-group)
 
 target_compile_definitions(${APP_NAME}.elf PUBLIC ${USER_COMPILE_DEFINITIONS})
-if (${NON_YOCTO})
-  set (INCLUDE_DIRS
-      "${CMAKE_INCLUDE_PATH}/include/"
-      "${CMAKE_BINARY_DIR}/include")
-  target_include_directories(${APP_NAME}.elf PUBLIC ${INCLUDE_DIRS} ${USER_INCLUDE_DIRECTORIES})
-endif()
+target_include_directories(${APP_NAME}.elf PUBLIC ${USER_INCLUDE_DIRECTORIES})
 
 print_elf_size(CMAKE_SIZE ${APP_NAME})
