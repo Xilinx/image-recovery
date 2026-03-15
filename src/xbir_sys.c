@@ -50,83 +50,16 @@
 #include "sleep.h"
 #include "stdio.h"
 #include "xbir_err.h"
-#include "sleep.h"
 #include "xbir_util.h"
 
 /************************** Constant Definitions *****************************/
 #define XBIR_SYS_QSPI_MAX_SUB_SECTOR_SIZE	(8192U)/* 8KB */
 #define XBR_SYS_NUM_REDUNDANT_COPY	(2U)
-#define XBIR_ETH_PHY_MIO_38	(38U)
-#define XBIR_ETH_PHY_MIO_77	(77U)
-#define XBIR_GPIO_DIR_OUTPUT	(1U)
-#define XBIR_GPIO_OUTPUT_EN	(1U)
-#define XBIR_GPIO_HIGH	(1U)
-#define XBIR_GPIO_LOW	(0U)
-
-#define XBIR_LATCH_TIME_FOR_PHY_RESET_IN_US	(200L)
-#define XBIR_POST_RESET_STABILIZATION_TIME_FOR_PHY_IN_US	(250000L)
 #define XBIR_BYTE_HEX_LEN	(2U)
 #define XBIR_SYS_PRODUCT_TYPE_LEN	(2U)
 #define XBIR_SYS_PRODUCT_NAME_LEN	(3U)
 #define XBIR_SYS_PRODUCT_TYPE_NAME_OFFSET	(4U)
 
-/* GEM clock related macros */
-#define CRL_APB_GEM1_REF_CTRL_OFFSET	(0XFF5E0054U)
-#define CRL_APB_GEM3_REF_CTRL_OFFSET	(0XFF5E005CU)
-#define IOU_SLCR_GEM_CTRL_OFFSET	(0XFF180360U)
-#define IOU_SLCR_GEM_CLK_CTRL_OFFSET	(0XFF180308U)
-#define CRL_APB_GEM_TSU_REF_CTRL_OFFSET		(0XFF5E0100U)
-#define CRL_APB_SDIO0_REF_CTRL_OFFSET		(0XFF5E006CU)
-
-/* MIO related macros */
-#define IOU_SLCR_MIO_PIN_13_OFFSET	(0XFF180034U)
-#define IOU_SLCR_MIO_PIN_14_OFFSET	(0XFF180038U)
-#define IOU_SLCR_MIO_PIN_15_OFFSET	(0XFF18003CU)
-#define IOU_SLCR_MIO_PIN_16_OFFSET	(0XFF180040U)
-#define IOU_SLCR_MIO_PIN_17_OFFSET	(0XFF180044U)
-#define IOU_SLCR_MIO_PIN_18_OFFSET	(0XFF180048U)
-#define IOU_SLCR_MIO_PIN_19_OFFSET	(0XFF18004CU)
-#define IOU_SLCR_MIO_PIN_20_OFFSET	(0XFF180050U)
-#define IOU_SLCR_MIO_PIN_21_OFFSET	(0XFF180054U)
-#define IOU_SLCR_MIO_PIN_22_OFFSET	(0XFF180058U)
-#define IOU_SLCR_MIO_PIN_23_OFFSET	(0XFF18005CU)
-#define IOU_SLCR_MIO_PIN_38_OFFSET	(0XFF180098U)
-#define IOU_SLCR_MIO_PIN_39_OFFSET	(0XFF18009CU)
-#define IOU_SLCR_MIO_PIN_40_OFFSET	(0XFF1800A0U)
-#define IOU_SLCR_MIO_PIN_41_OFFSET	(0XFF1800A4U)
-#define IOU_SLCR_MIO_PIN_42_OFFSET	(0XFF1800A8U)
-#define IOU_SLCR_MIO_PIN_43_OFFSET	(0XFF1800ACU)
-#define IOU_SLCR_MIO_PIN_44_OFFSET	(0XFF1800B0U)
-#define IOU_SLCR_MIO_PIN_45_OFFSET	(0XFF1800B4U)
-#define IOU_SLCR_MIO_PIN_46_OFFSET	(0XFF1800B8U)
-#define IOU_SLCR_MIO_PIN_47_OFFSET	(0XFF1800BCU)
-#define IOU_SLCR_MIO_PIN_48_OFFSET	(0XFF1800C0U)
-#define IOU_SLCR_MIO_PIN_49_OFFSET	(0XFF1800C4U)
-#define IOU_SLCR_MIO_PIN_50_OFFSET	(0XFF1800C8U)
-#define IOU_SLCR_MIO_PIN_51_OFFSET	(0XFF1800CCU)
-#define IOU_SLCR_MIO_PIN_64_OFFSET	(0XFF180100U)
-#define IOU_SLCR_MIO_PIN_65_OFFSET	(0XFF180104U)
-#define IOU_SLCR_MIO_PIN_66_OFFSET	(0XFF180108U)
-#define IOU_SLCR_MIO_PIN_67_OFFSET	(0XFF18010CU)
-#define IOU_SLCR_MIO_PIN_68_OFFSET	(0XFF180110U)
-#define IOU_SLCR_MIO_PIN_69_OFFSET	(0XFF180114U)
-#define IOU_SLCR_MIO_PIN_70_OFFSET	(0XFF180118U)
-#define IOU_SLCR_MIO_PIN_71_OFFSET	(0XFF18011CU)
-#define IOU_SLCR_MIO_PIN_72_OFFSET	(0XFF180120U)
-#define IOU_SLCR_MIO_PIN_73_OFFSET	(0XFF180124U)
-#define IOU_SLCR_MIO_PIN_74_OFFSET	(0XFF180128U)
-#define IOU_SLCR_MIO_PIN_75_OFFSET	(0XFF18012CU)
-#define IOU_SLCR_MIO_PIN_76_OFFSET	(0XFF180130U)
-#define IOU_SLCR_MIO_PIN_77_OFFSET	(0XFF180134U)
-
-#define IOU_SLCR_MIO_MST_TRI0_OFFSET	(0XFF180204U)
-#define IOU_SLCR_MIO_MST_TRI1_OFFSET	(0XFF180208U)
-#define IOU_SLCR_MIO_MST_TRI2_OFFSET	(0XFF18020CU)
-#define IOU_SLCR_BANK1_CTRL4_OFFSET	(0XFF180160U)
-#define XBIR_MIO_BANK1_CTRL5	(0xFF180164U)
-#define IOU_SLCR_BANK2_CTRL5_OFFSET	(0XFF180180U)
-#define CRL_APB_RST_LPD_IOU0_OFFSET	(0XFF5E0230U)
-#define CRL_APB_RST_LPD_IOU2_OFFSET	(0XFF5E0238U)
 #define IOU_SLCR_CTRL_REG_SD_OFFSET		(0XFF180310U)
 #define IOU_SLCR_SD_CONFIG_REG1_OFFSET		(0XFF18031CU)
 #define IOU_SLCR_SD_CONFIG_REG2_OFFSET		(0XFF180320U)
@@ -299,84 +232,29 @@ static int Xbir_EthInit (void)
 /*****************************************************************************/
 /**
  * @brief
- * This function brings the ethernet phy of KV260 out of reset.
+ * This function performs ethernet initialization for KV260 board.
  *
- * @return	XST_SUCCESS on successfully bringing phy out of reset
- * 		Error code on failure
+ * @return	XST_SUCCESS on successful initialization
  *
  *****************************************************************************/
 static int Xbir_KVEthInit (void)
 {
-	int Status = XST_FAILURE;
-	XGpioPs Gpio = {0U};
-	XGpioPs_Config *ConfigPtr;
-
-	Xbir_MaskWrite(IOU_SLCR_MIO_PIN_64_OFFSET, 0x000000FEU, 0x00000002U);
-	Xbir_MaskWrite(IOU_SLCR_MIO_PIN_65_OFFSET, 0x000000FEU, 0x00000002U);
-	Xbir_MaskWrite(IOU_SLCR_MIO_PIN_66_OFFSET, 0x000000FEU, 0x00000002U);
-	Xbir_MaskWrite(IOU_SLCR_MIO_PIN_67_OFFSET, 0x000000FEU, 0x00000002U);
-	Xbir_MaskWrite(IOU_SLCR_MIO_PIN_68_OFFSET, 0x000000FEU, 0x00000002U);
-	Xbir_MaskWrite(IOU_SLCR_MIO_PIN_69_OFFSET, 0x000000FEU, 0x00000002U);
-	Xbir_MaskWrite(IOU_SLCR_MIO_PIN_70_OFFSET, 0x000000FEU, 0x00000002U);
-	Xbir_MaskWrite(IOU_SLCR_MIO_PIN_71_OFFSET, 0x000000FEU, 0x00000002U);
-	Xbir_MaskWrite(IOU_SLCR_MIO_PIN_72_OFFSET, 0x000000FEU, 0x00000002U);
-	Xbir_MaskWrite(IOU_SLCR_MIO_PIN_73_OFFSET, 0x000000FEU, 0x00000002U);
-	Xbir_MaskWrite(IOU_SLCR_MIO_PIN_74_OFFSET, 0x000000FEU, 0x00000002U);
-	Xbir_MaskWrite(IOU_SLCR_MIO_PIN_75_OFFSET, 0x000000FEU, 0x00000002U);
-	Xbir_MaskWrite(IOU_SLCR_MIO_PIN_76_OFFSET, 0x000000FEU, 0x000000C0U);
-	Xbir_MaskWrite(IOU_SLCR_MIO_PIN_77_OFFSET, 0x000000FEU, 0x000000C0U);
+	int Status = XST_SUCCESS;
 
 #ifdef XPAR_XEMACPS_0_BASEADDR
 	EmacBaseAddr = XPAR_XEMACPS_0_BASEADDR;
 #endif
 
-	/* GEM clock settings */
-	Xbir_MaskWrite(CRL_APB_GEM3_REF_CTRL_OFFSET, 0x063F3F07U, 0x06010800U);
-	Xbir_MaskWrite(CRL_APB_GEM_TSU_REF_CTRL_OFFSET, 0x013F3F07U, 0x01010600U);
-
-	Xil_Out32(IOU_SLCR_MIO_MST_TRI0_OFFSET, 0xD4000000U);
-	Xil_Out32(IOU_SLCR_MIO_MST_TRI1_OFFSET, 0x00B02020U);
-	Xbir_MaskWrite(IOU_SLCR_MIO_MST_TRI2_OFFSET, 0x3FFFU, 0xFC0U);
-	Xbir_MaskWrite(IOU_SLCR_BANK2_CTRL5_OFFSET, 0x3FFFFFFU, 0x357FFFFU);
-	Xbir_MaskWrite(CRL_APB_RST_LPD_IOU0_OFFSET, 0x00000008U, 0x00000000U);
-
-	ConfigPtr = XGpioPs_LookupConfig(XBIR_GPIOPS_DEVICE);
-	if (ConfigPtr == NULL) {
-		Xbir_Printf(DEBUG_INFO, " ERROR: GPIO look up config failed\n\r");
-		goto END;
-	}
-
-	Status = XGpioPs_CfgInitialize(&Gpio, ConfigPtr, ConfigPtr->BaseAddr);
-	if (Status != XST_SUCCESS) {
-		Xbir_Printf(DEBUG_INFO, " ERROR: GPIO config initialize failed\n\r");
-		goto END;
-	}
-
-	/*
-	 * Set the direction for the pin to be output.
-	 */
-	XGpioPs_SetDirectionPin(&Gpio, XBIR_ETH_PHY_MIO_38, XBIR_GPIO_DIR_OUTPUT);
-	XGpioPs_SetOutputEnablePin(&Gpio, XBIR_ETH_PHY_MIO_38, XBIR_GPIO_OUTPUT_EN);
-
-	/*
-	 * Asserting the active low GPIO, which pushes the PHY into reset,
-	 * wait for 200us and then deasserting the GPIO to bring PHY out of reset
-	 */
-	XGpioPs_WritePin(&Gpio, XBIR_ETH_PHY_MIO_38, XBIR_GPIO_LOW);
-	usleep(XBIR_LATCH_TIME_FOR_PHY_RESET_IN_US);
-	XGpioPs_WritePin(&Gpio, XBIR_ETH_PHY_MIO_38, XBIR_GPIO_HIGH);
-	usleep(XBIR_POST_RESET_STABILIZATION_TIME_FOR_PHY_IN_US);
-
-END:
 	return Status;
 }
 
 /*****************************************************************************/
 /**
  * @brief
- * This function brings the ethernet phy of KR boards out of reset.
+ * This function performs ethernet initialization for KR boards and resets
+ * the I2C expander.
  *
- * @return	XST_SUCCESS on successfully bringing phy out of reset
+ * @return	XST_SUCCESS on successful initialization
  * 		Error code on failure
  *
  *****************************************************************************/
@@ -384,21 +262,6 @@ static int Xbir_KREthInit (void)
 {
 	int Status = XST_FAILURE;
 
-	Xbir_MaskWrite(IOU_SLCR_MIO_PIN_38_OFFSET, 0x000000FEU ,0x00000002U);
-	Xbir_MaskWrite(IOU_SLCR_MIO_PIN_39_OFFSET, 0x000000FEU ,0x00000002U);
-	Xbir_MaskWrite(IOU_SLCR_MIO_PIN_40_OFFSET, 0x000000FEU ,0x00000002U);
-	Xbir_MaskWrite(IOU_SLCR_MIO_PIN_41_OFFSET, 0x000000FEU ,0x00000002U);
-	Xbir_MaskWrite(IOU_SLCR_MIO_PIN_42_OFFSET, 0x000000FEU, 0x00000002U);
-	Xbir_MaskWrite(IOU_SLCR_MIO_PIN_43_OFFSET, 0x000000FEU ,0x00000002U);
-	Xbir_MaskWrite(IOU_SLCR_MIO_PIN_44_OFFSET, 0x000000FEU ,0x00000002U);
-	Xbir_MaskWrite(IOU_SLCR_MIO_PIN_45_OFFSET, 0x000000FEU ,0x00000002U);
-	Xbir_MaskWrite(IOU_SLCR_MIO_PIN_46_OFFSET, 0x000000FEU ,0x00000002U);
-	Xbir_MaskWrite(IOU_SLCR_MIO_PIN_47_OFFSET, 0x000000FEU ,0x00000002U);
-	Xbir_MaskWrite(IOU_SLCR_MIO_PIN_48_OFFSET, 0x000000FEU ,0x00000002U);
-	Xbir_MaskWrite(IOU_SLCR_MIO_PIN_49_OFFSET, 0x000000FEU ,0x00000002U);
-	Xbir_MaskWrite(IOU_SLCR_MIO_PIN_50_OFFSET, 0x000000FEU, 0x00000080U);
-	Xbir_MaskWrite(IOU_SLCR_MIO_PIN_51_OFFSET, 0x000000FEU, 0x00000080U);
-
 #if (XPAR_XEMACPS_NUM_INSTANCES == 2U)
 #ifdef XPAR_XEMACPS_1_BASEADDR
 	EmacBaseAddr = XPAR_XEMACPS_1_BASEADDR;
@@ -408,18 +271,6 @@ static int Xbir_KREthInit (void)
 	EmacBaseAddr = XPAR_XEMACPS_0_BASEADDR;
 #endif
 #endif
-
-	/* GEM clock settings */
-	Xbir_MaskWrite(CRL_APB_GEM1_REF_CTRL_OFFSET, 0x063F3F07U, 0x06010800U);
-	Xbir_MaskWrite(IOU_SLCR_GEM_CTRL_OFFSET, 0x00000003U, 0x00000001U);
-	Xbir_MaskWrite(IOU_SLCR_GEM_CLK_CTRL_OFFSET, 0x00000006U, 0x00000006U);
-	Xbir_MaskWrite(CRL_APB_GEM_TSU_REF_CTRL_OFFSET, 0x013F3F07U, 0x01010400U);
-
-	Xbir_MaskWrite(IOU_SLCR_MIO_MST_TRI0_OFFSET, 0xFFFFFFFFU, 0xD4000000U);
-	Xbir_MaskWrite(IOU_SLCR_MIO_MST_TRI1_OFFSET, 0xFFFFFFFFU, 0x00B3F020U);
-	Xbir_MaskWrite(IOU_SLCR_MIO_MST_TRI2_OFFSET, 0x00003FFFU, 0x0000000BU);
-	Xbir_MaskWrite(IOU_SLCR_BANK1_CTRL4_OFFSET, 0x03FFFFFFU, 0x03D7FFFFU);
-	Xbir_MaskWrite(CRL_APB_RST_LPD_IOU0_OFFSET, 0x00000003U, 0x00000000U);
 
 #if defined(XPAR_XIICPS_NUM_INSTANCES)
 	Status = Xbir_I2cExpanderReset();
@@ -427,7 +278,6 @@ static int Xbir_KREthInit (void)
 		goto END;
 	}
 #endif
-	usleep(XBIR_POST_RESET_STABILIZATION_TIME_FOR_PHY_IN_US);
 
 END:
 	return Status;
@@ -436,32 +286,14 @@ END:
 /*****************************************************************************/
 /**
  * @brief
- * This function brings the ethernet phy of KD260 out of reset.
+ * This function performs ethernet initialization for KD260 board.
  *
- * @return	XST_SUCCESS on successfully bringing phy out of reset
- * 		Error code on failure
+ * @return	XST_SUCCESS on successful initialization
  *
  *****************************************************************************/
 static int Xbir_KDEthInit (void)
 {
-	int Status = XST_FAILURE;
-	XGpioPs Gpio = {0U};
-	XGpioPs_Config *ConfigPtr;
-
-	Xbir_MaskWrite(IOU_SLCR_MIO_PIN_38_OFFSET, 0x000000FEU ,0x00000002U);
-	Xbir_MaskWrite(IOU_SLCR_MIO_PIN_39_OFFSET, 0x000000FEU ,0x00000002U);
-	Xbir_MaskWrite(IOU_SLCR_MIO_PIN_40_OFFSET, 0x000000FEU ,0x00000002U);
-	Xbir_MaskWrite(IOU_SLCR_MIO_PIN_41_OFFSET, 0x000000FEU ,0x00000002U);
-	Xbir_MaskWrite(IOU_SLCR_MIO_PIN_42_OFFSET, 0x000000FEU, 0x00000002U);
-	Xbir_MaskWrite(IOU_SLCR_MIO_PIN_43_OFFSET, 0x000000FEU ,0x00000002U);
-	Xbir_MaskWrite(IOU_SLCR_MIO_PIN_44_OFFSET, 0x000000FEU ,0x00000002U);
-	Xbir_MaskWrite(IOU_SLCR_MIO_PIN_45_OFFSET, 0x000000FEU ,0x00000002U);
-	Xbir_MaskWrite(IOU_SLCR_MIO_PIN_46_OFFSET, 0x000000FEU ,0x00000002U);
-	Xbir_MaskWrite(IOU_SLCR_MIO_PIN_47_OFFSET, 0x000000FEU ,0x00000002U);
-	Xbir_MaskWrite(IOU_SLCR_MIO_PIN_48_OFFSET, 0x000000FEU ,0x00000002U);
-	Xbir_MaskWrite(IOU_SLCR_MIO_PIN_49_OFFSET, 0x000000FEU ,0x00000002U);
-	Xbir_MaskWrite(IOU_SLCR_MIO_PIN_50_OFFSET, 0x000000FEU, 0x00000080U);
-	Xbir_MaskWrite(IOU_SLCR_MIO_PIN_51_OFFSET, 0x000000FEU, 0x00000080U);
+	int Status = XST_SUCCESS;
 
 #if (XPAR_XEMACPS_NUM_INSTANCES == 2U)
 #ifdef XPAR_XEMACPS_1_BASEADDR
@@ -473,44 +305,6 @@ static int Xbir_KDEthInit (void)
 #endif
 #endif
 
-	/* GEM clock settings */
-	Xbir_MaskWrite(CRL_APB_GEM1_REF_CTRL_OFFSET, 0x063F3F07U, 0x06010800U);
-	Xbir_MaskWrite(CRL_APB_GEM_TSU_REF_CTRL_OFFSET, 0x013F3F07U, 0x01010400U);
-
-	Xbir_MaskWrite(IOU_SLCR_MIO_MST_TRI0_OFFSET, 0xFFFFFFFFU, 0xD4000000U);
-	Xbir_MaskWrite(IOU_SLCR_MIO_MST_TRI1_OFFSET, 0xFFFFFFFFU, 0x00015000);
-	Xbir_MaskWrite(IOU_SLCR_MIO_MST_TRI2_OFFSET, 0x00003FFFU, 0x0000000BU);
-	Xbir_MaskWrite(XBIR_MIO_BANK1_CTRL5, 0x03FFFFFFU, 0x03FFF000);
-	Xbir_MaskWrite(CRL_APB_RST_LPD_IOU0_OFFSET, 0x00000003U, 0x00000000U);
-
-	ConfigPtr = XGpioPs_LookupConfig(XBIR_GPIOPS_DEVICE);
-	if (ConfigPtr == NULL) {
-		Xbir_Printf(DEBUG_INFO, "ERROR: GPIO look up config failed\n\r");
-		goto END;
-	}
-
-	Status = XGpioPs_CfgInitialize(&Gpio, ConfigPtr, ConfigPtr->BaseAddr);
-	if (Status != XST_SUCCESS) {
-		Xbir_Printf(DEBUG_INFO, "ERROR: GPIO config initialize failed\n\r");
-		goto END;
-	}
-
-	/*
-	 * Set the direction for the pin to be output.
-	 */
-	XGpioPs_SetDirectionPin(&Gpio, XBIR_ETH_PHY_MIO_77, XBIR_GPIO_DIR_OUTPUT);
-	XGpioPs_SetOutputEnablePin(&Gpio, XBIR_ETH_PHY_MIO_77, XBIR_GPIO_OUTPUT_EN);
-
-	/*
-	 * Asserting the active low GPIO, which pushes the PHY into reset,
-	 * wait for 200us and then deasserting the GPIO to bring PHY out of reset
-	 */
-	XGpioPs_WritePin(&Gpio, XBIR_ETH_PHY_MIO_77, XBIR_GPIO_LOW);
-	usleep(XBIR_LATCH_TIME_FOR_PHY_RESET_IN_US);
-	XGpioPs_WritePin(&Gpio, XBIR_ETH_PHY_MIO_77, XBIR_GPIO_HIGH);
-	usleep(XBIR_POST_RESET_STABILIZATION_TIME_FOR_PHY_IN_US);
-
-END:
 	return Status;
 }
 
@@ -518,51 +312,20 @@ END:
 /*****************************************************************************/
 /**
  * @brief
- * This function brings the ethernet phy of VPK120 RevB System Controller out
- * of reset.
+ * This function performs ethernet initialization for VPK120 RevB System
+ * Controller.
  *
- * @return	XST_SUCCESS on successfully bringing phy out of reset
- * 		Error code on failure
+ * @return	XST_SUCCESS on successful initialization
  *
  *****************************************************************************/
 static int Xbir_SCEthInit (void)
 {
-	int Status = XST_FAILURE;
-	XGpioPs Gpio = {0U};
-	XGpioPs_Config *ConfigPtr;
+	int Status = XST_SUCCESS;
 
 #ifdef XPAR_XEMACPS_0_BASEADDR
 	EmacBaseAddr = XPAR_XEMACPS_0_BASEADDR;
 #endif
 
-	ConfigPtr = XGpioPs_LookupConfig(XBIR_GPIOPS_DEVICE);
-	if (ConfigPtr == NULL) {
-		Xbir_Printf(DEBUG_INFO, " ERROR: GPIO look up config failed\n\r");
-		goto END;
-	}
-
-	Status = XGpioPs_CfgInitialize(&Gpio, ConfigPtr, ConfigPtr->BaseAddr);
-	if (Status != XST_SUCCESS) {
-		Xbir_Printf(DEBUG_INFO, " ERROR: GPIO config initialize failed\n\r");
-		goto END;
-	}
-
-	/*
-	 * Set the direction for the pin to be output.
-	 */
-	XGpioPs_SetDirectionPin(&Gpio, XBIR_ETH_PHY_MIO_77, XBIR_GPIO_DIR_OUTPUT);
-	XGpioPs_SetOutputEnablePin(&Gpio, XBIR_ETH_PHY_MIO_77, XBIR_GPIO_OUTPUT_EN);
-
-	/*
-	 * Asserting the active low GPIO, which pushes the PHY into reset,
-	 * wait for 200us and then deasserting the GPIO to bring PHY out of reset
-	 */
-	XGpioPs_WritePin(&Gpio, XBIR_ETH_PHY_MIO_77, XBIR_GPIO_LOW);
-	usleep(XBIR_LATCH_TIME_FOR_PHY_RESET_IN_US);
-	XGpioPs_WritePin(&Gpio, XBIR_ETH_PHY_MIO_77, XBIR_GPIO_HIGH);
-	usleep(XBIR_POST_RESET_STABILIZATION_TIME_FOR_PHY_IN_US);
-
-END:
 	return Status;
 }
 
