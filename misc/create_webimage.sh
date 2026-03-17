@@ -3,14 +3,16 @@
 # SPDX-License-Identifier: MIT
 #******************************************************************************
 
-rm -f web.img
+IMG_FILE="${1:-web.img}"
+
+rm -f "$IMG_FILE"
 
 # Create image file of 96K
-dd if=/dev/zero of=web.img bs=512 count=192
+dd if=/dev/zero of="$IMG_FILE" bs=512 count=192
 
 # Format image with FAT
-/sbin/mkfs.vfat -F 12 web.img
+mkfs.vfat -F 12 "$IMG_FILE"
 
 # Copy webpages using mtools (no mount/sudo needed)
-mcopy -i web.img -s ./web_pages/* ::
-chmod 444 web.img
+mcopy -i "$IMG_FILE" -s ./web_pages/* ::
+chmod 444 "$IMG_FILE"
