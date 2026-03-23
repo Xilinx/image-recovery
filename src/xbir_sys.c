@@ -57,6 +57,7 @@
 #define XBIR_BYTE_HEX_LEN	(2U)
 #define XBIR_SYS_PRODUCT_TYPE_LEN	(2U)
 #define XBIR_SYS_PRODUCT_NAME_LEN	(3U)
+#define XBIR_SYS_PRODUCT_TYPE_NAME_OFFSET	(4U)
 
 #define IOU_SLCR_MIO_PIN_13_OFFSET		(0XFF180034U)
 #define IOU_SLCR_MIO_PIN_14_OFFSET		(0XFF180038U)
@@ -95,9 +96,14 @@ static int Xbir_SysValidateBootImgInfo (Xbir_SysBootImgInfo *BootImgInfo,
 static u32 Xbir_SysCalcBootImgInfoChecksum (Xbir_SysBootImgInfo *BootImgInfo);
 static int Xbir_SysWrvBootImgInfo (Xbir_SysBootImgInfo *BootImgInfo, u32 Offset);
 static void Xbir_SysShowBootImgInfo (Xbir_SysBootImgInfo *BootImgInfo);
+static int Xbir_EthInit (void);
 static int Xbir_SysReadSysInfoFromEeprom (void);
+static int Xbir_KVEthInit (void);
+static int Xbir_KDEthInit (void);
 static int Xbir_SysCalculateCrc32 (u32 Offset, u32 Size,
 	Xbir_ReadDevice ReadDevice);
+static int Xbir_KREthInit (void);
+static int Xbir_SCEthInit (void);
 #if (defined(XBIR_SD_0) || defined(XBIR_SD_1))
 static int Xbir_KVeMMCInit (void);
 static int Xbir_SCeMMCInit (void);
@@ -183,6 +189,11 @@ int Xbir_SysInit (void)
 	Xbir_SysReadAndCorrectBootImgInfo();
 	Xbir_SysShowBootImgInfo(&BootImgStatus);
 
+	Status = Xbir_EthInit();
+	if (Status != XST_SUCCESS) {
+		goto END;
+	}
+
 #if (defined(XBIR_SD_0) || defined(XBIR_SD_1))
 	if (strncmp((char *)&SysInfo.BoardPrdName, "SM-",
 		XBIR_SYS_PRODUCT_NAME_LEN) == 0U) {
@@ -197,6 +208,138 @@ int Xbir_SysInit (void)
 #endif
 
 END:
+	return Status;
+}
+
+/*****************************************************************************/
+/**
+ * @brief
+ * This function brings the ethernet phy out of reset.
+ *
+ * @return	XST_SUCCESS on successfully bringing phy out of reset
+ * 		Error code on failure
+ *
+ *****************************************************************************/
+static int Xbir_EthInit (void)
+{
+	int Status = XST_FAILURE;
+
+	if (strncmp((char *)&CCInfo.BoardPrdName[XBIR_SYS_PRODUCT_TYPE_NAME_OFFSET],
+		"KV", XBIR_SYS_PRODUCT_TYPE_LEN) == 0U) {
+		Status = Xbir_KVEthInit();
+	}
+	else if (strncmp((char *)&CCInfo.BoardPrdName[XBIR_SYS_PRODUCT_TYPE_NAME_OFFSET],
+                "KR", XBIR_SYS_PRODUCT_TYPE_LEN) == 0U) {
+		Status = Xbir_KREthInit();
+	}
+	else if (strncmp((char *)&CCInfo.BoardPrdName[XBIR_SYS_PRODUCT_TYPE_NAME_OFFSET],
+                "KD", XBIR_SYS_PRODUCT_TYPE_LEN) == 0U) {
+		Status = Xbir_KDEthInit();
+	}
+	else {
+		Status = Xbir_SCEthInit();
+	}
+
+	return Status;
+}
+
+/*****************************************************************************/
+/**
+ * @brief
+ * This function performs ethernet initialization for KV260 board.
+ *
+ * @return	XST_SUCCESS on successful initialization
+ *
+ *****************************************************************************/
+static int Xbir_KVEthInit (void)
+{
+	int Status = XST_SUCCESS;
+
+#ifdef XPAR_XEMACPS_0_BASEADDR
+	EmacBaseAddr = XPAR_XEMACPS_0_BASEADDR;
+#endif
+
+	return Status;
+}
+
+/*****************************************************************************/
+/**
+ * @brief
+ * This function performs ethernet initialization for KR boards and resets
+ * the I2C expander.
+ *
+ * @return	XST_SUCCESS on successful initialization
+ * 		Error code on failure
+ *
+ *****************************************************************************/
+static int Xbir_KREthInit (void)
+{
+	int Status = XST_FAILURE;
+
+#if (XPAR_XEMACPS_NUM_INSTANCES == 2U)
+#ifdef XPAR_XEMACPS_1_BASEADDR
+	EmacBaseAddr = XPAR_XEMACPS_1_BASEADDR;
+#endif
+#else
+#ifdef XPAR_XEMACPS_0_BASEADDR
+	EmacBaseAddr = XPAR_XEMACPS_0_BASEADDR;
+#endif
+#endif
+
+#if defined(XPAR_XIICPS_NUM_INSTANCES)
+	Status = Xbir_I2cExpanderReset();
+	if (Status != XST_SUCCESS) {
+		goto END;
+	}
+#endif
+
+END:
+	return Status;
+}
+
+/*****************************************************************************/
+/**
+ * @brief
+ * This function performs ethernet initialization for KD260 board.
+ *
+ * @return	XST_SUCCESS on successful initialization
+ *
+ *****************************************************************************/
+static int Xbir_KDEthInit (void)
+{
+	int Status = XST_SUCCESS;
+
+#if (XPAR_XEMACPS_NUM_INSTANCES == 2U)
+#ifdef XPAR_XEMACPS_1_BASEADDR
+	EmacBaseAddr = XPAR_XEMACPS_1_BASEADDR;
+#endif
+#else
+#ifdef XPAR_XEMACPS_0_BASEADDR
+	EmacBaseAddr = XPAR_XEMACPS_0_BASEADDR;
+#endif
+#endif
+
+	return Status;
+}
+
+
+/*****************************************************************************/
+/**
+ * @brief
+ * This function performs ethernet initialization for VPK120 RevB System
+ * Controller.
+ *
+ * @return	XST_SUCCESS on successful initialization
+ *
+ *****************************************************************************/
+static int Xbir_SCEthInit (void)
+{
+	int Status = XST_SUCCESS;
+
+#ifdef XPAR_XEMACPS_0_BASEADDR
+	EmacBaseAddr = XPAR_XEMACPS_0_BASEADDR;
+#endif
+
 	return Status;
 }
 
