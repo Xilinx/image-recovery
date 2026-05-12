@@ -24,6 +24,7 @@
 #include "xbir_sys.h"
 
 #if LWIP_DHCP==1
+#include "sleep.h"
 #include "lwip/dhcp.h"
 #endif
 
@@ -36,6 +37,9 @@ static const u8 Xbir_NwMacEthAddr[] = { 0x00U, 0x0AU, 0x35U, 0x00U, 0x01U, 0x02U
 /***************** Macros (Inline Functions) Definitions *********************/
 #define MAX_PKT_PROC_COUNT	(25U) /* Max packets processed between
 		two background tasks execution */
+#if (LWIP_DHCP==1)
+#define XBIR_NW_DHCP_POLL_DELAY_US	(250000U)
+#endif
 
 /************************** Function Prototypes ******************************/
 static int Xbir_NwSetDefaultIp (ip_addr_t *Ip, ip_addr_t *Mask, ip_addr_t *Gw);
@@ -59,6 +63,12 @@ extern u32 EmacBaseAddr;
 int Xbir_NwCfgNetwork (struct netif *NetIf)
 {
 	int Status = XST_FAILURE;
+#if (LWIP_DHCP==1)
+	err_t DhcpErr;
+	u32 DhcpCoarseTimerCount = 0U;
+	u8 Odd = 1U;
+	u8 TimerIrqSeen = FALSE;
+#endif
 
 	/* Initialize lwip network stack */
 	lwip_init();
@@ -81,16 +91,65 @@ int Xbir_NwCfgNetwork (struct netif *NetIf)
 	 * Note: you must call dhcp_fine_tmr() and dhcp_coarse_tmr() at
 	 * the predefined regular intervals after starting the client.
 	 */
-	dhcp_start(NetIf);
 	(void)Xbir_dhcp_timoutcntr(INIT);
-	while (((NetIf->ip_addr.addr) == 0U) && (Xbir_dhcp_timoutcntr(GET) > 0U))
+	DhcpErr = dhcp_start(NetIf);
+	if (DhcpErr != ERR_OK) {
+		Xbir_Printf(DEBUG_PRINT_ALWAYS,
+			"WARNING: DHCP start failed (%d), using default static IP\n\r",
+			DhcpErr);
+		if (Xbir_NwSetDefaultIp(&(NetIf->ip_addr),
+				&(NetIf->netmask), &(NetIf->gw)) != XST_SUCCESS) {
+			goto END;
+		}
+		goto PRINT_IP;
+	}
+
+	while (((NetIf->ip_addr.addr) == 0U) &&
+			(Xbir_dhcp_timoutcntr(GET) > 0U)) {
+		if (TcpFastTmrFlag) {
+			tcp_fasttmr();
+			TcpFastTmrFlag = 0U;
+			TimerIrqSeen = TRUE;
+		}
+
+		if (TcpSlowTmrFlag) {
+			tcp_slowtmr();
+			TcpSlowTmrFlag = 0U;
+			TimerIrqSeen = TRUE;
+		}
+
+		if (TimerIrqSeen == FALSE) {
+			tcp_fasttmr();
+			Odd = !Odd;
+			if (Odd > 0U) {
+				tcp_slowtmr();
+				(void)Xbir_dhcp_timoutcntr(DEC);
+				dhcp_fine_tmr();
+				DhcpCoarseTimerCount++;
+				if (DhcpCoarseTimerCount >= DHCP_TIMER_COUNT) {
+					dhcp_coarse_tmr();
+					DhcpCoarseTimerCount = 0U;
+				}
+			}
+		}
+
 		xemacif_input(NetIf);
+
+		if (TimerIrqSeen == FALSE) {
+			usleep(XBIR_NW_DHCP_POLL_DELAY_US);
+		}
+		TimerIrqSeen = FALSE;
+	}
 
 	if (Xbir_dhcp_timoutcntr(GET) <= 0U) {
 		if ((NetIf->ip_addr.addr) == 0U) {
-			xil_printf("ERROR: DHCP request timed out\r\n");
-			Xbir_NwSetDefaultIp(&(NetIf->ip_addr),
-					&(NetIf->netmask), &(NetIf->gw));
+			Xbir_Printf(DEBUG_PRINT_ALWAYS, "WARNING: DHCP request timed out,"
+					" using default static IP\n\r");
+			dhcp_stop(NetIf);
+			if (Xbir_NwSetDefaultIp(&(NetIf->ip_addr),
+					&(NetIf->netmask), &(NetIf->gw)) != XST_SUCCESS) {
+				goto END;
+			}
 		}
 	}
 
@@ -101,6 +160,9 @@ int Xbir_NwCfgNetwork (struct netif *NetIf)
 		&NetIf->gw) != XST_SUCCESS) {
 		goto END;
 	}
+#endif
+#if (LWIP_DHCP==1)
+PRINT_IP:
 #endif
 	Xbir_NwPrintIpCfg(&NetIf->ip_addr, &NetIf->netmask, &NetIf->gw);
 	Status = XST_SUCCESS;

@@ -20,6 +20,7 @@
 #include "xbir_config.h"
 #include "netif/xadapter.h"
 #include "xbir_platform.h"
+#include "sleep.h"
 
 /************************** Constant Definitions *****************************/
 #define INTC_DEVICE_ID		XPAR_SCUGIC_SINGLE_DEVICE_ID
@@ -45,6 +46,7 @@
 
 /************************** Variable Definitions *****************************/
 static XTtcPs TimerInstance = {0U};
+static XScuGic GicInstance = {0U};
 volatile u8 TcpFastTmrFlag = FALSE;
 volatile u8 TcpSlowTmrFlag = FALSE;
 
@@ -70,11 +72,11 @@ void Xbir_Platform_TimerCallback (void)
 	 */
 	static u8 Odd = 1U;
 #if LWIP_DHCP==1
-    static int dhcp_timer = 0U;
+	static int dhcp_timer = 0U;
 #endif
 
 	TcpFastTmrFlag = TRUE;
-	Odd = ~Odd;
+	Odd = !Odd;
 	if (Odd > 0U) {
 		TcpSlowTmrFlag = 1U;
 #if LWIP_DHCP==1
@@ -122,10 +124,26 @@ int Xbir_Platform_SetupTimer (void)
 		goto END;
 	}
 
+	/* Stop timer and reset counter before configuration */
+	XTtcPs_Stop(Timer);
+	XTtcPs_ResetCounterValue(Timer);
+
+	/* Clear any pending interrupts */
+	u32 StatusEvent = XTtcPs_GetInterruptStatus(Timer);
+	XTtcPs_ClearInterruptStatus(Timer, StatusEvent);
+
 	XTtcPs_SetOptions(Timer,
 		XTTCPS_OPTION_INTERVAL_MODE | XTTCPS_OPTION_WAVE_DISABLE);
-	XTtcPs_CalcIntervalFromFreq(Timer, PLATFORM_TIMER_INTR_RATE_HZ,
-		&Interval, &Prescaler);
+
+	/* Manual calculation for 4 Hz (250ms) interrupt rate:
+	 * Clock = 100 MHz, Target = 4 Hz (250ms)
+	 * For best accuracy with 4Hz: use prescaler 7 (divide by 256)
+	 * Effective clock = 100MHz / 256 = 390625 Hz
+	 * For 4 Hz: 390625 / 4 = 97656.25 counts per interrupt
+	 */
+	Prescaler = 7;  /* Divide by 2^(7+1) = 256 */
+	Interval = 97656; /* 390625 Hz / 4 Hz */
+
 	XTtcPs_SetInterval(Timer, Interval);
 	XTtcPs_SetPrescaler(Timer, Prescaler);
 
@@ -164,31 +182,53 @@ void Xbir_Platform_ClearInterrupt (void)
  *****************************************************************************/
 void Xbir_Platform_SetupInterrupts (void)
 {
+	int Status;
+	XScuGic_Config *GicConfig;
+
+	/* Initialize exception system */
 	Xil_ExceptionInit();
 
-	XScuGic_DeviceInitialize(INTC_DEVICE_ID);
+	/* Lookup GIC configuration */
+	GicConfig = XScuGic_LookupConfig(INTC_DEVICE_ID);
+	if (GicConfig == NULL) {
+		Xbir_Printf(DEBUG_INFO, "ERROR: GIC LookupConfig failed!\n\r");
+		return;
+	}
+
+	/* Initialize the GIC */
+	Status = XScuGic_CfgInitialize(&GicInstance, GicConfig, GicConfig->CpuBaseAddress);
+	if (Status != XST_SUCCESS) {
+		Xbir_Printf(DEBUG_INFO, "ERROR: GIC CfgInitialize failed: %d\n\r", Status);
+		return;
+	}
 
 	/*
 	 * Connect the interrupt controller interrupt handler to the hardware
 	 * interrupt handling logic in the processor.
 	 */
 	Xil_ExceptionRegisterHandler(XIL_EXCEPTION_ID_IRQ_INT,
-		(Xil_ExceptionHandler)XScuGic_DeviceInterruptHandler,
-		(void *)INTC_DEVICE_ID);
+		(Xil_ExceptionHandler)XScuGic_InterruptHandler,
+		&GicInstance);
 
 	/*
-	 * Connect the device driver handler that will be called when an
-	 * interrupt for the device occurs, the handler defined above performs
-	 * the specific interrupt processing for the device.
+	 * Connect the timer interrupt handler
 	 */
-	XScuGic_RegisterHandler(INTC_BASE_ADDR, TIMER_IRPT_INTR,
-		(Xil_ExceptionHandler) Xbir_Platform_TimerCallback,
-		(void *) &TimerInstance);
+	Status = XScuGic_Connect(&GicInstance, TIMER_IRPT_INTR,
+		(Xil_ExceptionHandler)Xbir_Platform_TimerCallback,
+		(void *)&TimerInstance);
+	if (Status != XST_SUCCESS) {
+		Xbir_Printf(DEBUG_INFO, "ERROR: GIC Connect failed: %d\n\r", Status);
+		return;
+	}
 
-	/* Enable the interrupt for SCU timer */
-	XScuGic_EnableIntr(INTC_DIST_BASE_ADDR, TIMER_IRPT_INTR);
+	/*
+	 * Enable the IRQ exception
+	 */
+	Xil_ExceptionEnable();
 
-	return;
+	/* Enable the timer interrupt in the GIC */
+	XScuGic_SetPriorityTriggerType(&GicInstance, TIMER_IRPT_INTR, 0xA0, 0x3);
+	XScuGic_Enable(&GicInstance, TIMER_IRPT_INTR);
 }
 
 /*****************************************************************************/
@@ -203,12 +243,20 @@ void Xbir_Platform_SetupInterrupts (void)
  *****************************************************************************/
 void Xbir_Platform_EnableInterrupts (void)
 {
+	/* Ensure timer is stopped before enabling interrupts */
+	XTtcPs_Stop(&TimerInstance);
+
+	/* Clear any pending interrupts before enabling */
+	u32 PendingIntr = XTtcPs_GetInterruptStatus(&TimerInstance);
+	XTtcPs_ClearInterruptStatus(&TimerInstance, PendingIntr);
+
 	/* Enable timer interrupts */
 	Xil_ExceptionEnableMask(XIL_EXCEPTION_IRQ);
 	XTtcPs_EnableInterrupts(&TimerInstance, XTTCPS_IXR_INTERVAL_MASK);
-	XTtcPs_Start(&TimerInstance);
 
-	return;
+	/* Reset counter to 0 and start */
+	XTtcPs_ResetCounterValue(&TimerInstance);
+	XTtcPs_Start(&TimerInstance);
 }
 
 /*****************************************************************************/
@@ -249,7 +297,9 @@ int Xbir_dhcp_timoutcntr(int state)
 {
 	static volatile int dhcp_timoutcntr = DHCP_TIMEOUT;
 
-	if(state == DEC){
+	if (state == INIT) {
+		dhcp_timoutcntr = DHCP_TIMEOUT;
+	} else if ((state == DEC) && (dhcp_timoutcntr > 0)) {
 		dhcp_timoutcntr --;
 	}
 
