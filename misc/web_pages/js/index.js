@@ -141,6 +141,20 @@ function onUploadProgress(evt) {
 }
 
 function onUploadSuccess(evt) {
+	try {
+		var response = evt.target.responseText;
+		if (response && response.includes('"Status":"Fail"')) {
+			var obj = JSON.parse(response);
+			var reason = obj.Reason || "Upload validation failed";
+			document.getElementById('upld_status').value = "Upload Failed: " + reason;
+			alert("Upload Failed: " + reason);
+			enableAllUsrInputs();
+			return;
+		}
+	} catch (e) {
+		console.log("Response parsing failed (non-JSON or error), continuing with CRC validation:", e);
+	}
+
 	initiateCrcValidation();
 	document.getElementById('upld_status').value = "Verifying CRC32 . . . . .";
 }
@@ -205,7 +219,7 @@ function initiateImgUpload () {
 	var fd = new FormData();
 	fd.append(url, imgFile);
 	document.getElementById("upld_prgrs").style.visibility = "visible";
-	document.getElementById('upld_status').value = "Erasing Flash . . . . .";
+	document.getElementById('upld_status').value = "Uploading . . . . .";
 	document.getElementById("upld_prgrs").value = 0;
 	xhr.upload.addEventListener("progress", onUploadProgress, false);
 	xhr.addEventListener("load", onUploadSuccess, false);
@@ -215,9 +229,64 @@ function initiateImgUpload () {
 	xhr.send(fd);
 }
 
+function validateBootBinHeader(file, callback) {
+	var MIN_BOOT_HEADER_SIZE = 40;
+
+	if (file.size < MIN_BOOT_HEADER_SIZE) {
+		callback(false, "Invalid boot.bin file - file is too small or corrupted");
+		return;
+	}
+
+	// Read first 40 bytes to validate header
+	var reader = new FileReader();
+	reader.onload = function(e) {
+		var bytes = new Uint8Array(e.target.result);
+
+		// Xilinx boot header magic values (little-endian)
+		var BOOT_SYNC_WORD = [0x66, 0x55, 0x99, 0xAA];  // 0xAA995566
+		var BOOT_XNLX_MAGIC = [0x58, 0x4E, 0x4C, 0x58]; // "XNLX"
+
+		// Check ZynqMP offsets (0x20 and 0x24)
+		var isValid = true;
+		for (var i = 0; i < 4; i++) {
+			if (bytes[0x20 + i] !== BOOT_SYNC_WORD[i] || bytes[0x24 + i] !== BOOT_XNLX_MAGIC[i]) {
+				isValid = false;
+				break;
+			}
+		}
+
+		if (isValid) {
+			callback(true, null);
+		} else {
+			// No valid header found
+			callback(false, "Corrupted or invalid boot.bin file");
+		}
+	};
+
+	reader.onerror = function() {
+		callback(false, "Failed to read the selected file");
+	};
+
+	reader.readAsArrayBuffer(file.slice(0, MIN_BOOT_HEADER_SIZE));
+}
+
+function startImageUploadProcess(imgFile) {
+	disableAllUsrInputs();
+	document.getElementById("upld_status").style.visibility = "visible";
+	document.getElementById('upld_status').value = "Calculating CRC32 . . . . .";
+	document.getElementById("upld_prgrs").style.visibility = "visible";
+	startCalcCrc32(imgFile);
+}
+
 function onUpload() {
 	var imgId = "A";
 	var imgFile = document.getElementById("img_file").files[0];
+
+	// Check if file is selected
+	if (!imgFile) {
+		alert("Please select a file first");
+		return;
+	}
 
 	if (document.getElementById("recBimg").checked)
 		imgId = "B";
@@ -227,7 +296,6 @@ function onUpload() {
 	var progressBar = document.getElementById("upld_prgrs");
 	progressBar.value = 0;
 
-	var imgFile = document.getElementById("img_file").files[0];
 	extension = imgFile.name.split('.').pop() + '';
 	if (((imgId == "A") || (imgId == "B")) && (extension.toUpperCase() != "BIN")) {
 		alert("Invalid file type for image " + imgId + ". File should be of .bin type.");
@@ -236,13 +304,25 @@ function onUpload() {
 		alert("Invalid file type for image " + imgId + ". File should be of .wic type.");
 	}
 	else {
+		// Validate BOOT.BIN header BEFORE confirming upload (skip for WIC images)
+		if (imgId === "WIC") {
+			// WIC images don't need boot header validation
+			if (confirm("Are you sure you want to update image " + imgId + "?")) {
+				startImageUploadProcess(imgFile);
+			}
+		} else {
+			// Validate BOOT.BIN files (Image A and B)
+			validateBootBinHeader(imgFile, function(isValid, errorMsg) {
+				if (!isValid) {
+					alert("Upload Failed: " + errorMsg);
+					enableAllUsrInputs();
+					return;
+				}
 
-		if (confirm("Are you sure you want to update image " + imgId + "?")) {
-			disableAllUsrInputs();
-			document.getElementById("upld_status").style.visibility = "visible";
-			document.getElementById('upld_status').value = "Calculating CRC32 . . . . .";
-			document.getElementById("upld_prgrs").style.visibility = "visible";
-			startCalcCrc32(imgFile);
+				if (confirm("Are you sure you want to update image " + imgId + "?")) {
+					startImageUploadProcess(imgFile);
+				}
+			});
 		}
 	}
 }
