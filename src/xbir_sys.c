@@ -1123,6 +1123,62 @@ END:
 
 /*****************************************************************************/
 /**
+ * @brief
+ * This function validates if uploaded data contains a valid Xilinx boot header
+ * for ZynqMP platform.
+ *
+ * @param      Data            Pointer to image data buffer
+ * @param      DataSize        Size of the data buffer (minimum 40 bytes needed)
+ *
+ * @return     XST_SUCCESS if valid boot header is detected
+ *             XBIR_ERROR_INVALID_BOOT_HEADER if no valid header found
+ *
+ ******************************************************************************/
+int Xbir_SysValidateBootHeader (u8 *Data, u32 DataSize)
+{
+	int Status = XBIR_ERROR_INVALID_BOOT_HEADER;
+	u8 i;
+	u8 IsValid;
+
+	/* Boot header magic identifiers (little-endian byte arrays) */
+	const u8 BootSyncWord[4] = {0x66U, 0x55U, 0x99U, 0xAAU};  /* 0xAA995566 */
+	const u8 BootXnlxMagic[4] = {0x58U, 0x4EU, 0x4CU, 0x58U}; /* "XNLX" */
+
+	if (Data == NULL) {
+		Xbir_Printf(DEBUG_INFO, " ERROR: NULL data pointer\r\n");
+		goto END;
+	}
+
+	if (DataSize < 40U) {
+		Xbir_Printf(DEBUG_INFO, " ERROR: File too small for boot.bin (minimum 40 bytes)\r\n");
+		goto END;
+	}
+
+	/* Check ZynqMP boot header offsets (sync at 0x20, XNLX at 0x24) */
+	/* Use byte-by-byte comparison to avoid endianness issues */
+	IsValid = 1U;
+	for (i = 0U; i < 4U; i++) {
+		if ((Data[0x20U + i] != BootSyncWord[i]) ||
+		    (Data[0x24U + i] != BootXnlxMagic[i])) {
+			IsValid = 0U;
+			break;
+		}
+	}
+
+	if (IsValid == 1U) {
+		Xbir_Printf(DEBUG_INFO, " Valid ZynqMP boot header detected\r\n");
+		Status = XST_SUCCESS;
+	} else {
+		/* Invalid boot header */
+		Xbir_Printf(DEBUG_INFO, " ERROR: Invalid or corrupted boot.bin - boot header validation failed\r\n");
+	}
+
+END:
+	return Status;
+}
+
+/*****************************************************************************/
+/**
  * @brief	This function executes background tasks which will be run in the
  * loop present in Xbir_NwProcessPkts
  *

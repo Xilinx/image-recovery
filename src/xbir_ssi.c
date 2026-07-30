@@ -634,6 +634,15 @@ int Xbir_SsiProcessAdditionalPayload (struct tcp_pcb *Tpcb, u8 *HttpReq,
 			Status = Xbir_SsiUpdateImg(Tpcb, ImgData, ImgSizeInThisPkt);
 			Xbir_SsiLastUploadSize = ImgSize;
 		}
+		else {
+			Xbir_Printf(DEBUG_INFO, " ERROR: Failed to find image in HTTP request\r\n");
+			(void)Xbir_HttpSendResponseJson(Tpcb, HttpReq, HttpReqLen,
+				"{\"Status\":\"Fail\",\"Reason\":\"Invalid upload format\"}",
+				strlen("{\"Status\":\"Fail\",\"Reason\":\"Invalid upload format\"}"));
+			Xbir_HttpClose(Tpcb);
+			Status = XST_FAILURE;
+			goto END;
+		}
 	}
 	else {
 		Status = Xbir_SsiUpdateImg(Tpcb, HttpReq, HttpReqLen);
@@ -1091,11 +1100,23 @@ static int Xbir_SsiInitiateImgUpdate (struct tcp_pcb *Tpcb, u8 *HttpReq,
 
 	Status = Xbir_SsiGetImgInfo (HttpArg, HttpReq, HttpReqLen, &ImgData);
 	if (XST_FAILURE == Status) {
+		Xbir_Printf(DEBUG_INFO, " ERROR: Failed to get image info\r\n");
+		(void)Xbir_HttpSendResponseJson(Tpcb, HttpReq, HttpReqLen,
+			"{\"Status\":\"Fail\",\"Reason\":\"Failed to process upload request\"}",
+			strlen("{\"Status\":\"Fail\",\"Reason\":\"Failed to process upload request\"}"));
+		Xbir_HttpClose(Tpcb);
+		Status = XST_FAILURE;
 		goto END;
 	}
 
 	Status = Xbir_SysGetBootImgOffset(BootImgId, &Offset);
 	if (Status != XST_SUCCESS) {
+		Xbir_Printf(DEBUG_INFO, " ERROR: Failed to get boot image offset\r\n");
+		(void)Xbir_HttpSendResponseJson(Tpcb, HttpReq, HttpReqLen,
+			"{\"Status\":\"Fail\",\"Reason\":\"Invalid boot image ID\"}",
+			strlen("{\"Status\":\"Fail\",\"Reason\":\"Invalid boot image ID\"}"));
+		Xbir_HttpClose(Tpcb);
+		Status = XST_FAILURE;
 		goto END;
 	}
 	HttpArg->Offset = Offset;
@@ -1103,11 +1124,34 @@ static int Xbir_SsiInitiateImgUpdate (struct tcp_pcb *Tpcb, u8 *HttpReq,
 	if (HttpArg->Fsize > 0U) {
 		if ((FlashEraseStats->State != XBIR_FLASH_ERASE_COMPLETED) ||
 			(FlashEraseStats->CurrentImgErased != BootImgId)) {
+			Xbir_Printf(DEBUG_INFO, " ERROR: Flash erase incomplete or invalid\r\n");
+			(void)Xbir_HttpSendResponseJson(Tpcb, HttpReq, HttpReqLen,
+				"{\"Status\":\"Fail\",\"Reason\":\"Flash erase not completed\"}",
+				strlen("{\"Status\":\"Fail\",\"Reason\":\"Flash erase not completed\"}"));
+			Xbir_HttpClose(Tpcb);
+			Status = XST_FAILURE;
 			goto END;
 		}
-		Xbir_SsiLastImgUpload = BootImgId;
+
 		ImgSizeInThisPkt = HttpReqLen - (u16)(ImgData - HttpReq);
 		ImgSize = HttpArg->Fsize;
+
+		/* Validate boot header for BOOT.BIN files (Image A and B) */
+		if ((BootImgId == XBIR_SYS_BOOT_IMG_A_ID || BootImgId == XBIR_SYS_BOOT_IMG_B_ID) &&
+			(ImgSizeInThisPkt >= 40U)) {
+			Status = Xbir_SysValidateBootHeader(ImgData, ImgSizeInThisPkt);
+			if (Status != XST_SUCCESS) {
+				Xbir_Printf(DEBUG_INFO, " ERROR: Boot header validation failed\r\n");
+				(void)Xbir_HttpSendResponseJson(Tpcb, HttpReq, HttpReqLen,
+					"{\"Status\":\"Fail\",\"Reason\":\"Invalid boot header\"}",
+					strlen("{\"Status\":\"Fail\",\"Reason\":\"Invalid boot header\"}"));
+				Xbir_HttpClose(Tpcb);
+				Status = XST_FAILURE;
+				goto END;
+			}
+		}
+
+		Xbir_SsiLastImgUpload = BootImgId;
 		Xbir_Printf(DEBUG_INFO, " Starting image update\r\n");
 		Status = Xbir_SsiUpdateImg (Tpcb, ImgData, ImgSizeInThisPkt);
 		Xbir_SsiLastUploadSize = ImgSize;

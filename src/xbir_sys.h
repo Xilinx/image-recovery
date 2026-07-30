@@ -179,6 +179,7 @@ int Xbir_SysWriteFlash (u32 Offset, u8 *Data, u32 Size,
 	Xbir_ImgDataStatus IsLast);
 int Xbir_SysEraseBootImg (Xbir_SysBootImgId BootImgId);
 int Xbir_SysValidateCrc (Xbir_SysBootImgId BootImgId, u32 Size, u32 InCrc);
+int Xbir_SysValidateBootHeader (u8 *Data, u32 DataSize);
 void Xbir_SysExecuteBackgroundTasks(void);
 #if (defined(XBIR_SD_0) || defined(XBIR_SD_1))
 int Xbir_SysWriteSD (u32 Offset, u8 *Data, u32 Size, Xbir_ImgDataStatus IsLast);

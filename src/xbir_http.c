@@ -199,13 +199,16 @@ int Xbir_HttpSendResponseJson (struct tcp_pcb *Tpcb, u8 *HttpReq,
 	}
 
 	Error = tcp_write(Tpcb, JsonStr, JsonStrLen,
-		TCP_WRITE_FLAG_COPY | TCP_WRITE_FLAG_MORE);
+		TCP_WRITE_FLAG_COPY);
 	if (Error != ERR_OK) {
 		Xbir_Printf(DEBUG_INFO, " Attempted to lwip_write %d bytes,"
 			" tcp write error = %d\r\n", JsonStrLen, Error);
 		Xbir_HttpClose(Tpcb);
 		goto END;
 	}
+
+	/* Force output of buffered data */
+	tcp_output(Tpcb);
 
 	Status = XST_SUCCESS;
 
