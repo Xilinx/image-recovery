@@ -665,7 +665,7 @@ static void Xbir_HttpExtractFileName(char *HttpReq, u16 HttpReqLen,
 	 * Requests are of the form GET /path/to/filename HTTP... OR
 	 * POST /path/to/filename HTTP...
 	 */
-	if (strcmp(HttpReq, "GET ") == 0)
+	if (strncmp(HttpReq, "GET ", strlen("GET ")) == 0)
 		Offset = strlen("GET ");
 	else {
 		Offset = strlen("POST ");

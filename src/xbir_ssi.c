@@ -445,7 +445,7 @@ int Xbir_SsiJsonCfgBootImgStatus (char *JsonStr, u16 JsonStrLen)
 
 		Str = Xbir_SsiJsonGetSeperator(Str, &Seperator);
 		if (Seperator == XBIR_SSI_JSON_OBJ_END) {
-			if ((ImgABootable != 0xFFU) && (ImgABootable != 0xFFU) &&
+			if ((ImgABootable != 0xFFU) && (ImgBBootable != 0xFFU) &&
 				(ReqBootImg != 0xFFU)) {
 				Status = XST_SUCCESS;
 			}

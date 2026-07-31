@@ -764,13 +764,16 @@ static int Xbir_SysValidateBootImgInfo (Xbir_SysBootImgInfo *BootImgInfo,
 {
 	int Status = XBIR_ERROR_PERSISTENT_REG_VAL_CHKSUM;
 	u32 ChkSum;
+	u32 OriginalChecksum;
 
 	if ((BootImgInfo->IdStr[0U] == 'A') &&
 		(BootImgInfo->IdStr[1U] == 'B') &&
 		(BootImgInfo->IdStr[2U] == 'U') &&
 		(BootImgInfo->IdStr[3U] == 'M')) {
+		/* Save original checksum before calc function overwrites it */
+		OriginalChecksum = BootImgInfo->Checksum;
 		ChkSum = Xbir_SysCalcBootImgInfoChecksum (BootImgInfo);
-		if (ChkSum == BootImgInfo->Checksum) {
+		if (ChkSum == OriginalChecksum) {
 			Status = XST_SUCCESS;
 		}
 		else {
