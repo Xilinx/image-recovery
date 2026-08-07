@@ -63,7 +63,7 @@ typedef struct {
 	u8 Length;
 	u8 LanguageCode;
 	u8 ManufacDate[3U];
-	u8 BoardMaufacType;
+	u8 BoardManufacType;
 	u8 BoardManufacturer[6U];
 	u8 BoardPrdNameType;
 	u8 BoardPrdName[16U];
@@ -71,7 +71,7 @@ typedef struct {
 	u8 BoardSerialNumber[16U];
 	u8 BoardPartNumType;
 	u8 BoardPartNum[9U];
-	u8 FRUFileIdTYpe;
+	u8 FRUFileIdType;
 	u8 FRUFileId;
 	u8 RevType;
 	u8 RevNum[8U];

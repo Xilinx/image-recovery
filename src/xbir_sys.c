@@ -141,7 +141,7 @@ static u32 CalcCrc = 0xFFFFFFFFU;
  *
  * @param	None
  *
- * @return	XST_SUCCESS on successful intialization of the system devices
+ * @return	XST_SUCCESS on successful initialization of the system devices
  * 		Error code on failure
  *
  *****************************************************************************/
@@ -323,7 +323,7 @@ static int Xbir_SCEthInit (void)
 /*****************************************************************************/
 /**
  * @brief
- * This function return the SysBoard board information read from EEPROM. Note that
+ * This function returns the SysBoard board information read from EEPROM. Note that
  * function Xbir_SysReadSysInfoFromEeprom should be called before calling this
  * function.
  *
@@ -340,7 +340,7 @@ const Xbir_SysInfo* Xbir_SysGetSysBoardInfo (void)
 /*****************************************************************************/
 /**
  * @brief
- * This function return the carrier card information read from EEPROM. Note that
+ * This function returns the carrier card information read from EEPROM. Note that
  * function Xbir_SysReadSysInfoFromEeprom should be called before calling this
  * function.
  *
@@ -381,7 +381,7 @@ const Xbir_SysPersistentState * Xbir_SysGetBootImgStatus (void)
  *				offset
  *
  * @return	XST_SUCCESS on success
- *		XST_FAILUE on invalid request
+ *		XST_FAILURE on invalid request
  *
  *****************************************************************************/
 int Xbir_SysGetBootImgOffset (Xbir_SysBootImgId BootImgId, u32 *Offset)
@@ -619,7 +619,7 @@ END:
 /*****************************************************************************/
 /**
  * @brief
- * This function reads the boot image info from QSPI. It also try to correct the
+ * This function reads the boot image info from QSPI. It also tries to correct the
  * corrupted boot image information stored in QSPI.
  *
  * @param	None
@@ -710,7 +710,7 @@ static void Xbir_SysReadAndCorrectBootImgInfo (void)
  *
  * @param	BootImgInfo	Pointer to boot image information
  * @param	Offset		QSPI offset where bBoot image information to be
- * 				weritten
+ * 				written
  * @return	XST_SUCCESS on success write to boot image information
  * 		Error code on failure
  *
@@ -1284,7 +1284,7 @@ END:
 /*****************************************************************************/
 /**
  * @brief
- * This function does register write and initializations required for eMMC on
+ * This function performs register writes and initializations required for eMMC on
  * VPK120 RevB System Controller.
  *
  * @return	XST_SUCCESS on successfully bringing phy out of reset

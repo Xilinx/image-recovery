@@ -40,7 +40,7 @@ void Xbir_Platform_Cleanup (void);
 int Xbir_Platform_SetupTimer (void);
 void Xbir_Platform_EnableInterrupts (void);
 void Xbir_Platform_ClearInterrupt (void);
-int Xbir_dhcp_timoutcntr(int state);
+int Xbir_dhcp_timeoutcntr(int state);
 
 #ifdef __cplusplus
 }

@@ -58,7 +58,7 @@ void dhcp_coarse_tmr();
 /*****************************************************************************/
 /**
  * @brief
- * This function is callback function for handling timer interrupts.
+ * This function is a callback function for handling timer interrupts.
  *
  * @param	TimerInstance	Pointer to instance of XTtcPs
  *
@@ -68,7 +68,7 @@ void dhcp_coarse_tmr();
 void Xbir_Platform_TimerCallback (void)
 {
 	/* We need to call tcp_fasttmr & tcp_slowtmr at intervals specified
-	 * by lwIP. It is not important that the timing is absoluetly accurate.
+	 * by lwIP. It is not important that the timing is absolutely accurate.
 	 */
 	static u8 Odd = 1U;
 #if LWIP_DHCP==1
@@ -81,7 +81,7 @@ void Xbir_Platform_TimerCallback (void)
 		TcpSlowTmrFlag = 1U;
 #if LWIP_DHCP==1
 		dhcp_timer++;
-		(void)Xbir_dhcp_timoutcntr(DEC);
+		(void)Xbir_dhcp_timeoutcntr(DEC);
 		dhcp_fine_tmr();
 		if (dhcp_timer >= DHCP_TIMER_COUNT) {
 			dhcp_coarse_tmr();
@@ -286,24 +286,24 @@ int Xbir_Platform_Init (void)
 /*****************************************************************************/
 /**
  * @brief
- * This function handles dhcp_timoutcntr variable
+ * This function handles dhcp_timeoutcntr variable
  *
  * @param	state variable takes INIT, GET, DEC to manipulate the variable
  *
- * @return	dhcp_timoutcntr value
+ * @return	dhcp_timeoutcntr value
  *
  *****************************************************************************/
-int Xbir_dhcp_timoutcntr(int state)
+int Xbir_dhcp_timeoutcntr(int state)
 {
-	static volatile int dhcp_timoutcntr = DHCP_TIMEOUT;
+	static volatile int dhcp_timeoutcntr = DHCP_TIMEOUT;
 
 	if (state == INIT) {
-		dhcp_timoutcntr = DHCP_TIMEOUT;
-	} else if ((state == DEC) && (dhcp_timoutcntr > 0)) {
-		dhcp_timoutcntr --;
+		dhcp_timeoutcntr = DHCP_TIMEOUT;
+	} else if ((state == DEC) && (dhcp_timeoutcntr > 0)) {
+		dhcp_timeoutcntr --;
 	}
 
-	return dhcp_timoutcntr;
+	return dhcp_timeoutcntr;
 }
 
 #endif

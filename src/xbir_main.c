@@ -34,7 +34,7 @@ static void Xbir_PrintAppBanner (struct netif *NetIf);
 /*****************************************************************************/
 /**
  * @brief
- * This functions configured and starts the recovery image based on the
+ * This function configures and starts the recovery image based on the
  * web server application.
  *
  * @param	None
@@ -54,7 +54,7 @@ int main (void)
 
 	Status = Xbir_SysInit();
 	if (XST_SUCCESS != Status) {
-		Xbir_Printf(DEBUG_INFO, " ERROR: System intialization failed....");
+		Xbir_Printf(DEBUG_INFO, " ERROR: System initialization failed....");
 		goto END;
 	}
 

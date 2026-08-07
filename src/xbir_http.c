@@ -92,7 +92,7 @@ static int Http_ArgArrayIndex;
 /**
  * @brief
  * This function processes input HTTP request to send response.
- * This assumes that tcp_sndbuf is high enough to send atleast 1 packet.
+ * This assumes that tcp_sndbuf is high enough to send at least 1 packet.
  *
  * @param	Tpcb		Pointer to TCP PCB
  * @param	HttpReq		Pointer to HTTP payload
@@ -548,7 +548,7 @@ static int Xbir_HttpGenerateHdr (char *Buffer, const char *Ext, u16 Size)
 /**
  * @brief
  * This function processes HTTP GET command for accessing web server files.
- * It initiates file transfer if request is ligitimate, else sends HTTP 404
+ * It initiates file transfer if request is legitimate, else sends HTTP 404
  * error.
  *
  * @param	Tpcb		Pointer to TCP PCB
@@ -687,7 +687,7 @@ static void Xbir_HttpExtractFileName(char *HttpReq, u16 HttpReqLen,
 		goto END;
 	}
 
-	/* If there is something wrong with the URL & we ran for for more than
+	/* If there is something wrong with the URL & we ran for more than
 	 * the HTTP buffer length (Offset > HttpReqLen) or the file name is too
 	 * long, throw 404 error */
 	if ((Offset > HttpReqLen) ||
@@ -830,7 +830,7 @@ static int Xbir_HttpProcessFlashEraseStatus(struct tcp_pcb *Tpcb,
 /*****************************************************************************/
 /**
  * @brief
- * This function sends the input Status in JSON formave over HTTP as a response.
+ * This function sends the input Status in JSON format over HTTP as a response.
  *
  * @param	Tpcb		Pointer to TCP PCB
  * @param	HttpReq		Pointer to HTTP payload

@@ -91,7 +91,7 @@ int Xbir_NwCfgNetwork (struct netif *NetIf)
 	 * Note: you must call dhcp_fine_tmr() and dhcp_coarse_tmr() at
 	 * the predefined regular intervals after starting the client.
 	 */
-	(void)Xbir_dhcp_timoutcntr(INIT);
+	(void)Xbir_dhcp_timeoutcntr(INIT);
 	DhcpErr = dhcp_start(NetIf);
 	if (DhcpErr != ERR_OK) {
 		Xbir_Printf(DEBUG_PRINT_ALWAYS,
@@ -105,7 +105,7 @@ int Xbir_NwCfgNetwork (struct netif *NetIf)
 	}
 
 	while (((NetIf->ip_addr.addr) == 0U) &&
-			(Xbir_dhcp_timoutcntr(GET) > 0U)) {
+			(Xbir_dhcp_timeoutcntr(GET) > 0U)) {
 		if (TcpFastTmrFlag) {
 			tcp_fasttmr();
 			TcpFastTmrFlag = 0U;
@@ -123,7 +123,7 @@ int Xbir_NwCfgNetwork (struct netif *NetIf)
 			Odd = !Odd;
 			if (Odd > 0U) {
 				tcp_slowtmr();
-				(void)Xbir_dhcp_timoutcntr(DEC);
+				(void)Xbir_dhcp_timeoutcntr(DEC);
 				dhcp_fine_tmr();
 				DhcpCoarseTimerCount++;
 				if (DhcpCoarseTimerCount >= DHCP_TIMER_COUNT) {
@@ -141,7 +141,7 @@ int Xbir_NwCfgNetwork (struct netif *NetIf)
 		TimerIrqSeen = FALSE;
 	}
 
-	if (Xbir_dhcp_timoutcntr(GET) <= 0U) {
+	if (Xbir_dhcp_timeoutcntr(GET) <= 0U) {
 		if ((NetIf->ip_addr.addr) == 0U) {
 			Xbir_Printf(DEBUG_PRINT_ALWAYS, "WARNING: DHCP request timed out,"
 					" using default static IP\n\r");
