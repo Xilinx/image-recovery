@@ -3,6 +3,9 @@
 * SPDX-License-Identifier: MIT
 */
 
+var systemBoardInfo = null;
+var ImgCrc = 0;
+
 function onPageLoad() {
 	document.getElementById("upld_prgrs").style.visibility = "hidden";
 	document.getElementById("upld_status").style.visibility = "hidden";
@@ -28,13 +31,15 @@ function onPageLoad() {
 		table.rows[3].cells[1].innerHTML = obj.CcInfo.PartNo;
 		table.rows[4].cells[1].innerHTML = obj.CcInfo.UUID;
 
-		if (obj.SysBoardInfo.BoardName.startsWith("SMK-")) {
-			document.getElementById("recWICLabel").style.display = "none";
-			document.getElementById("recWICimg").disabled = true;
-			document.getElementById("recWICimg").style.display = "none";
-		}
+	if (obj.SysBoardInfo && obj.SysBoardInfo.BoardName &&
+		(obj.SysBoardInfo.BoardName.startsWith("SMK-") || obj.SysBoardInfo.BoardName.startsWith("SM-K"))) {
+		document.getElementById("recWICLabel").style.display = "none";
+		document.getElementById("recWICimg").disabled = true;
+		document.getElementById("recWICimg").style.display = "none";
+	}
 
-		updateBootImgStatus(obj);
+		systemBoardInfo = obj;
+		updateBootImgStatus(systemBoardInfo);
 	}
 	document.getElementById("upld_btn").addEventListener("CrcDone", onCrcComplete);
 	document.getElementById("upld_btn").addEventListener("FlashEraseDone", initiateImgUpload);
@@ -42,6 +47,15 @@ function onPageLoad() {
 }
 
 function updateBootImgStatus(objBrd) {
+	var boardInfo = objBrd;
+	if (!boardInfo || !boardInfo.SysBoardInfo || !boardInfo.SysBoardInfo.BoardName) {
+		boardInfo = {
+			SysBoardInfo: {
+				BoardName: ""
+			}
+		};
+	}
+
 	var http = new XMLHttpRequest();
 	http.open("GET", "boot_img_status", true);
 	http.send();
@@ -78,8 +92,8 @@ function updateBootImgStatus(objBrd) {
 		}
 
 		if (obj.LastBootImg == "ImageA") {
-			if (objBrd.SysBoardInfo.BoardName.startsWith("SMK-") ||
-				objBrd.SysBoardInfo.BoardName.startsWith("SM-K")){
+			if (boardInfo.SysBoardInfo.BoardName.startsWith("SMK-") ||
+				boardInfo.SysBoardInfo.BoardName.startsWith("SM-K")){
 				document.getElementById("recBimg").checked = true;
 			}
 			else {
@@ -88,8 +102,8 @@ function updateBootImgStatus(objBrd) {
 			SysImgInfoTbl.rows[3].cells[1].innerHTML = "Image A";
 		}
 		else {
-			if (objBrd.SysBoardInfo.BoardName.startsWith("SMK-") ||
-				objBrd.SysBoardInfo.BoardName.startsWith("SM-K")){
+			if (boardInfo.SysBoardInfo.BoardName.startsWith("SMK-") ||
+				boardInfo.SysBoardInfo.BoardName.startsWith("SM-K")){
 				document.getElementById("recAimg").checked = true;
 			}
 			else {
@@ -119,7 +133,7 @@ function onCfg() {
 	http.send(params);
 
 	http.onload = function() {
-			updateBootImgStatus();
+			updateBootImgStatus(systemBoardInfo);
 	}
 }
 
@@ -166,7 +180,7 @@ function onUploadFailed(evt) {
 	if (document.getElementById("recBimg").checked)
 		imgId = 'B';
 	else if (document.getElementById("recWICimg").checked)
-		imgId = "WIC"
+		imgId = "WIC";
 
 	document.getElementById('upld_status').value = "Upload Failed . . . . .";
 	alert("Failed to update image " + imgId);
@@ -180,7 +194,7 @@ function onUploadCanceled(evt) {
 	if (document.getElementById("recBimg").checked)
 		imgId = 'B';
 	else if (document.getElementById("recWICimg").checked)
-		imgId = "WIC"
+		imgId = "WIC";
 
 	document.getElementById('upld_status').value = "Upload Canceled . . . . .";
 	alert("Canceled update image " + imgId + " operation");
@@ -212,7 +226,7 @@ function initiateImgUpload () {
 	if (document.getElementById("recBimg").checked)
 		imgId = "B";
 	else if (document.getElementById("recWICimg").checked)
-		imgId = "WIC"
+		imgId = "WIC";
 
 	var url = '/download_img' + imgId;
 	var xhr = new XMLHttpRequest();
@@ -291,12 +305,12 @@ function onUpload() {
 	if (document.getElementById("recBimg").checked)
 		imgId = "B";
 	else if (document.getElementById("recWICimg").checked)
-		imgId = "WIC"
+		imgId = "WIC";
 
 	var progressBar = document.getElementById("upld_prgrs");
 	progressBar.value = 0;
 
-	extension = imgFile.name.split('.').pop() + '';
+	var extension = imgFile.name.split('.').pop() + '';
 	if (((imgId == "A") || (imgId == "B")) && (extension.toUpperCase() != "BIN")) {
 		alert("Invalid file type for image " + imgId + ". File should be of .bin type.");
 	}
@@ -364,7 +378,7 @@ function flashEraseStatus(imgId) {
 		var progress = parseInt(obj.Progress);
 		document.getElementById("upld_prgrs").value = progress;
 		if (progress < 100)
-			flashEraseStatus();
+			flashEraseStatus(imgId);
 		else if (progress >= 100) {
 			const event = new CustomEvent('FlashEraseDone', { detail: imgId});
 			document.getElementById("upld_btn").dispatchEvent(event);
@@ -379,7 +393,7 @@ function flashErase() {
 	if (document.getElementById("recBimg").checked)
 		imgId = 'B';
 	else if (document.getElementById("recWICimg").checked)
-		imgId = "WIC"
+		imgId = "WIC";
 
 	var xhr = new XMLHttpRequest();
 	xhr.open("GET", "flash_erase_img" + imgId, true);
@@ -387,8 +401,10 @@ function flashErase() {
 	document.getElementById('upld_status').value = "Erasing Flash . . . . .";
 	document.getElementById("upld_prgrs").value = 0;
 	document.getElementById("upld_prgrs").max = 100;
+	xhr.onload = function() {
+		flashEraseStatus(imgId);
+	};
 	xhr.send();
-	xhr.onload = flashEraseStatus(imgId);
 }
 
 function onCrcComplete(evt) {
@@ -473,7 +489,7 @@ function initiateCrcValidation() {
 		if (document.getElementById("recBimg").checked)
 			imgId = 'B';
 		else if (document.getElementById("recWICimg").checked)
-			imgId = "WIC"
+		imgId = "WIC";
 
 		if(obj.Status == "Success") {
 			document.getElementById('upld_status').value = "Upload successful . . . . .";
@@ -484,7 +500,7 @@ function initiateCrcValidation() {
 			alert("CRC check failed after downloading image " + imgId);
 		}
 
-		updateBootImgStatus();
+		updateBootImgStatus(systemBoardInfo);
 		enableAllUsrInputs();
 	}
 }
