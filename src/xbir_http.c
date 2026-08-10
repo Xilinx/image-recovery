@@ -665,20 +665,36 @@ static void Xbir_HttpExtractFileName(char *HttpReq, u16 HttpReqLen,
 	 * Requests are of the form GET /path/to/filename HTTP... OR
 	 * POST /path/to/filename HTTP...
 	 */
-	if (strncmp(HttpReq, "GET ", strlen("GET ")) == 0)
-		Offset = strlen("GET ");
+	if ((HttpReqLen >= 4U) && (strncmp(HttpReq, "GET ", 4U) == 0)) {
+		Offset = 4U;
+	}
+	else if ((HttpReqLen >= 5U) && (strncmp(HttpReq, "POST ", 5U) == 0)) {
+		Offset = 5U;
+	}
 	else {
-		Offset = strlen("POST ");
+		strcpy(FileName, "404.htm");
+		Xbir_Printf(DEBUG_INFO, " ERROR: Malformed HTTP request, invalid method\r\n");
+		goto END;
 	}
 
-	if (HttpReq[Offset] == '/')
+	if ((Offset < HttpReqLen) && (HttpReq[Offset] == '/'))
 		Offset++;
 
 	Start = HttpReq + Offset;   /* Start marker */
 
 	/* File name finally ends in a space */
-	while (HttpReq[Offset] != ' ')
+	while ((Offset < HttpReqLen) && (HttpReq[Offset] != ' '))
 		Offset++;
+
+	/*
+	 * Validate request format: space delimiter must exist within payload.
+	 * Missing delimiter indicates malformed or truncated HTTP request.
+	 */
+	if (Offset >= HttpReqLen) {
+		strcpy(FileName, "404.htm");
+		Xbir_Printf(DEBUG_INFO, " ERROR: Malformed HTTP request, no space found\r\n");
+		goto END;
+	}
 
 	End = HttpReq + Offset - 1; /* End marker */
 
@@ -690,8 +706,8 @@ static void Xbir_HttpExtractFileName(char *HttpReq, u16 HttpReqLen,
 	/* If there is something wrong with the URL & we ran for more than
 	 * the HTTP buffer length (Offset > HttpReqLen) or the file name is too
 	 * long, throw 404 error */
-	if ((Offset > HttpReqLen) ||
-		((End - Start) > FileNameSize)) {
+	size_t NameLen = (size_t)(End - Start + 1U);
+	if ((Offset > HttpReqLen) || (NameLen >= FileNameSize)) {
 		*End = 0;
 		strcpy(FileName, "404.htm");
 		Xbir_Printf(DEBUG_INFO, " ERROR: Request filename is too long, length = %d,"
@@ -705,8 +721,14 @@ static void Xbir_HttpExtractFileName(char *HttpReq, u16 HttpReqLen,
 	FileName[End - Start + 1U] = 0U;
 
 	/* If last character is a '/', append index.htm */
-	if (*End == '/')
+	if (*End == '/') {
+		if ((NameLen + strlen("index.htm")) >= FileNameSize) {
+			strcpy(FileName, "404.htm");
+			Xbir_Printf(DEBUG_INFO, " ERROR: Path too long to append index.htm\r\n");
+			goto END;
+		}
 		strcat(FileName, "index.htm");
+	}
 
 END:
 	return;

@@ -1039,13 +1039,23 @@ static int Xbir_SsiUpdateImg (struct tcp_pcb *Tpcb, u8 *HttpReq,
 		}
 
 		if (HttpArg->Fsize == DataSize) {
-			WriteDevice(HttpArg->Offset, HttpReq, DataSize,
+			Status = WriteDevice(HttpArg->Offset, HttpReq, DataSize,
 				XBIR_SYS_LAST_DATA_CHUNK);
 		}
 		else {
-			WriteDevice(HttpArg->Offset, HttpReq, DataSize,
+			Status = WriteDevice(HttpArg->Offset, HttpReq, DataSize,
 				XBIR_SYS_PARTIAL_DATA_CHUNK);
 		}
+
+		if (Status != XST_SUCCESS) {
+			Xbir_Printf(DEBUG_INFO, " ERROR: Write failed at offset %u, size %u\r\n",
+				HttpArg->Offset, DataSize);
+			Xbir_HttpSendResponseJson(Tpcb, HttpReq, HttpReqLen,
+				"{\"Status\":\"Fail\",\"Reason\":\"Write failed\"}",
+				strlen("{\"Status\":\"Fail\",\"Reason\":\"Write failed\"}"));
+			goto END;
+		}
+
 		HttpArg->Fsize -= DataSize;
 		HttpArg->Offset += DataSize;
 	}
@@ -1064,6 +1074,7 @@ static int Xbir_SsiUpdateImg (struct tcp_pcb *Tpcb, u8 *HttpReq,
 		Status = XST_SUCCESS;
 	}
 
+END:
 	return Status;
 }
 

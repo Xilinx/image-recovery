@@ -32,6 +32,7 @@
 #include "xsdps.h"
 #include "xbir_config.h"
 #include "xbir_err.h"
+#include <string.h>
 
 /************************** Constant Definitions *****************************/
 
@@ -105,22 +106,39 @@ int Xbir_SdRead(u32 SrcAddr, u8* DestAddr, u32 Length)
 	int Status = XST_FAILURE;
 	u16 NumOfBlocks = (Length / XBIR_SDPS_BLOCK_SIZE);
 	u32 BlockNumber = (SrcAddr / XBIR_SDPS_BLOCK_SIZE);
+	u32 Remainder = Length % XBIR_SDPS_BLOCK_SIZE;
+	u8 TempBuffer[XBIR_SDPS_BLOCK_SIZE] __attribute__ ((aligned(32)));
 
-	Status  = XSdPs_ReadPolled(&SdInstance, BlockNumber, NumOfBlocks,
-		(u8*)DestAddr);
-	if (Status != XST_SUCCESS) {
-		Status = XBIR_ERROR_SD_READ;
+	/* Zero-length read is valid and should succeed */
+	if (Length == 0U) {
+		Status = XST_SUCCESS;
 		goto END;
 	}
 
-	if ((Length % XBIR_SDPS_BLOCK_SIZE) != 0U) {
-		BlockNumber += NumOfBlocks;
-		DestAddr += NumOfBlocks * XBIR_SDPS_BLOCK_SIZE;
-		Status = XSdPs_ReadPolled(&SdInstance, BlockNumber, 1U,
-			DestAddr);
+	if (NumOfBlocks > 0U) {
+		Status  = XSdPs_ReadPolled(&SdInstance, BlockNumber, NumOfBlocks,
+			(u8*)DestAddr);
 		if (Status != XST_SUCCESS) {
 			Status = XBIR_ERROR_SD_READ;
+			goto END;
 		}
+	}
+
+	if (Remainder != 0U) {
+		BlockNumber += NumOfBlocks;
+		DestAddr += NumOfBlocks * XBIR_SDPS_BLOCK_SIZE;
+		/*
+		 * SD controller reads in block-aligned units. Read full block to
+		 * temp buffer to prevent overwriting caller's destination buffer.
+		 */
+		Status = XSdPs_ReadPolled(&SdInstance, BlockNumber, 1U,
+			TempBuffer);
+		if (Status != XST_SUCCESS) {
+			Status = XBIR_ERROR_SD_READ;
+			goto END;
+		}
+		/* Copy only requested remainder bytes to destination */
+		memcpy(DestAddr, TempBuffer, Remainder);
 	}
 
 END:
@@ -145,18 +163,39 @@ int Xbir_SdWrite(u32 Offset, u8 *WrBuffer, u32 Length)
 	int Status = XST_FAILURE;
 	u64 NumBlocks = Length / XBIR_SDPS_BLOCK_SIZE;
 	u32 BlockIndex;
+	u32 Remainder = Length % XBIR_SDPS_BLOCK_SIZE;
+	u8 TempBuffer[XBIR_SDPS_BLOCK_SIZE] __attribute__ ((aligned(32)));
 
 	Offset /= XBIR_SDPS_BLOCK_SIZE;
-	for (BlockIndex = 0U; BlockIndex < NumBlocks;
-		BlockIndex += XBIR_SD_RAW_NUM_SECTORS) {
+	for (BlockIndex = 0U; BlockIndex < NumBlocks;) {
+		u32 BlocksToWrite = (NumBlocks - BlockIndex) < XBIR_SD_RAW_NUM_SECTORS ?
+			(u32)(NumBlocks - BlockIndex) : XBIR_SD_RAW_NUM_SECTORS;
 		Status = XSdPs_WritePolled(&SdInstance, (Offset + BlockIndex),
-			XBIR_SD_RAW_NUM_SECTORS, WrBuffer);
+			BlocksToWrite, WrBuffer);
 		if (Status != XST_SUCCESS) {
 			Status = XBIR_ERROR_SD_WRITE;
 			goto END;
 		}
-		WrBuffer += XBIR_SDPS_CHUNK_SIZE;
+		WrBuffer += (BlocksToWrite * XBIR_SDPS_BLOCK_SIZE);
+		BlockIndex += BlocksToWrite;
 	}
+
+	/*
+	 * Write non-block-aligned trailing bytes by padding to block boundary.
+	 * SD controller requires block-aligned writes; pad remainder with 0xFF.
+	 */
+	if (Remainder != 0U) {
+		memset(TempBuffer, 0xFF, XBIR_SDPS_BLOCK_SIZE);
+		memcpy(TempBuffer, WrBuffer, Remainder);
+		Status = XSdPs_WritePolled(&SdInstance, (Offset + BlockIndex),
+			1U, TempBuffer);
+		if (Status != XST_SUCCESS) {
+			Status = XBIR_ERROR_SD_WRITE;
+			goto END;
+		}
+	}
+
+	Status = XST_SUCCESS;
 
 END:
 	return Status;

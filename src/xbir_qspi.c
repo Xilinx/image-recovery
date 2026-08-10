@@ -521,6 +521,12 @@ int Xbir_QspiRead(u32 SrcAddress, u8* DestAddress, u32 Length)
 		goto END;
 	}
 
+	/* Zero-length read is valid and should succeed */
+	if (Length == 0U) {
+		Status = XST_SUCCESS;
+		goto END;
+	}
+
 	/* Update no of bytes to be copied */
 	RemainingBytes = Length;
 

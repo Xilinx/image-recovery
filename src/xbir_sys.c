@@ -1088,6 +1088,7 @@ int Xbir_SysValidateCrc (Xbir_SysBootImgId BootImgId, u32 Size, u32 InCrc)
 	int Status = XBIR_ERROR_BOOT_IMG_ID;
 	u32 Offset;
 	u32 Crc;
+	Xbir_ReadDevice ReadDevice = Xbir_QspiRead;
 
 	if (XBIR_SYS_BOOT_IMG_A_ID == BootImgId) {
 		Offset = BootImgStatus.BootImgAOffset;
@@ -1097,15 +1098,18 @@ int Xbir_SysValidateCrc (Xbir_SysBootImgId BootImgId, u32 Size, u32 InCrc)
 	}
 	else if (XBIR_SYS_BOOT_IMG_WIC == BootImgId) {
 		Offset = 0U;
-		Status = XST_SUCCESS;
+#if (defined(XBIR_SD_0) || defined(XBIR_SD_1))
+		ReadDevice = Xbir_SdRead;
+#else
+		Status = XBIR_ERROR_BOOT_IMG_ID;
+		goto END;
+#endif
 	}
 	else {
 		goto END;
 	}
 
-	if (Offset != 0U) {
-		Status = Xbir_SysCalculateCrc32 (Offset, Size, Xbir_QspiRead);
-	}
+	Status = Xbir_SysCalculateCrc32 (Offset, Size, ReadDevice);
 	Crc = CalcCrc ^ 0xFFFFFFFFU;
 	if ((Status == XST_SUCCESS) && (Crc == InCrc)) {
 		Xbir_Printf(DEBUG_INFO, " CRC matches\r\n");
