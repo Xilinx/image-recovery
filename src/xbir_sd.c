@@ -204,21 +204,46 @@ END:
 /*****************************************************************************/
 /**
  * @brief
- * This function erases given sectors in SD card from the start.
+ * This function erases data from SD card at the specified byte range.
+ * Byte offsets are converted to block addresses for SD controller operations.
  *
+ * @param	Offset  Starting byte offset to erase from
  * @param	Length  Number of bytes to erase
- * @param	Offset  Starting offset to erase
  *
- * @return	XST_SUCCESS on successful write
+ * @return	XST_SUCCESS on successful erase
  * 		Error code on failure
  *
  ******************************************************************************/
 int Xbir_SdErase(u32 Offset, u32 Length)
 {
 	int Status = XST_FAILURE;
+	u64 StartByte;
+	u64 EndByte;
+	u32 StartBlock;
+	u32 EndBlock;
 
-	Status = XSdPs_Erase(&SdInstance, Offset, (Offset + Length));
+	/* Zero-length erase is a no-op and should succeed. */
+	if (Length == 0U) {
+		Status = XST_SUCCESS;
+		goto END;
+	}
 
+	/*
+	 * Convert byte offset range to block address range.
+	 * SD controller expects block addresses; subtract 1 from end byte
+	 * to ensure inclusive range semantics .
+	 */
+	StartByte = (u64)Offset;
+	EndByte = StartByte + (u64)Length - 1U;
+	StartBlock = (u32)(StartByte / XBIR_SDPS_BLOCK_SIZE);
+	EndBlock = (u32)(EndByte / XBIR_SDPS_BLOCK_SIZE);
+
+	Status = XSdPs_Erase(&SdInstance, StartBlock, EndBlock);
+	if (Status != XST_SUCCESS) {
+		Status = XBIR_ERROR_SD_ERASE;
+	}
+
+END:
 	return Status;
 }
 
